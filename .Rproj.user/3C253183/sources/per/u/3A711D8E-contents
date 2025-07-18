@@ -1,0 +1,48 @@
+setwd("R")
+
+X <- list(
+  ENV = read.csv("../data/examples/MICROBIOMIQ/Env.csv"),
+  OTU = read.csv("../data/examples/MICROBIOMIQ/OTU.csv")[, 1:100],
+  Metabo = read.csv("../data/examples/MICROBIOMIQ/Metabo.csv")[, 1:100]
+)
+
+Y <- X$ENV$Samples %>% str_split_i("_", 1)
+reduced <- list()
+reduced <- var.selection(X, as.vector(Y),
+                         cv.threshold = NULL,
+                         IQR.threshold = 0.75,
+                         freqCut = 0.75,
+                         uniqueCut = NULL,
+                         kruskal = F,
+                         ch.threshold = NULL,
+                         kurt.threshold = NULL,
+                         vip.threshold = NULL,
+                         RDA = F,
+                         core.workers = NULL
+)
+X.r <- shrink.block(X, reduced, plot = T)
+X.s <- intra.scale(X.r, Y, method = 1, core.workers = NULL)
+
+Y.n <- X.n$EAG$Samples %>% str_split_i("_", 2)
+
+source("bench_function.R")
+res.tmp <- bench(X.n, Y.n)
+res.tmp <- bench(X = X, Y, 
+                 range.x = seq(0.1, 0.9, 0.4),
+                 range.y = seq(0.1, 0.9, 0.4))
+
+
+row.names(res.tmp[[2]]) <- seq(0.1, 0.5, 0.2)
+colnames(res.tmp[[2]]) <- seq(0.1, 0.5, 0.2)
+
+error_rate_df <- melt(res.tmp[[2]], varnames = c("CV", "IQR"), value.name = "Error Rate")
+
+ggplot(error_rate_df, aes(x = CV, y = IQR, fill = `Error Rate`)) +
+  geom_tile() +
+  geom_text(aes(label = round(`Error Rate`, 2)), color = "white") +  
+  scale_fill_gradient(low = "blue", high = "red") +  
+  scale_x_continuous(breaks = seq(0.1, 0.9, 0.4), labels = paste('CV: ', seq(0.1, 0.9, 0.4))) + 
+  scale_y_continuous(breaks = seq(0.1, 0.9, 0.4), labels = paste('IQR: ', seq(0.1, 0.9, 0.4))) +  
+  labs(title = "Heatmap of Error Rate", x = "CV", y = "IQR") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))

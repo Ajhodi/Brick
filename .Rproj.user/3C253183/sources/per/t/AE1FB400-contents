@@ -1,0 +1,597 @@
+---
+title: "Brick"
+output: github_document
+  html_document:
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = './R')
+```
+
+```{r, echo=FALSE, warning=FALSE}
+source("var_selection.R")
+source("shrink_block.R")
+source("scaling_process.R")
+source("model_maker.R")
+source("create_net.R")
+source("cluster_net.R")
+source("umap_projection.R")
+source("block_ckeck.R")
+source("bench_function.R")
+```
+
+# Introduction
+
+*Brick* is a package built for multi-block analysis and heterogeneous data integration. It is based around the *mixOmics* package and the *Block-plsda()* and *Block-splsda()* algorithms. This package integrates several features for data visualization, interpretation, and multicore parallelization. To showcase all of these features, we will present two examples of heterogeneous data integration from *MICROBIOMIQ* and *COMBO* project (Cresot et al. 2025). The dataset presents heterogeneous information in terms of size and nature (MS spectroscopy, physicochemical measurements, several pollutant measures, and photosynthesis activity).
+
+## Block-spl algorithm
+
+*Block-spls* or *Multiblock-pls* is a horizontal integration of the PLS algorithm on multiple X matrices (or blocks) with a specified number of components associated with a response vector (Y) [Andreas Baum et al. (2019)]. To work properly, each and every block needs to have the same number of rows, and the response vector, in the case of PLS-DA, needs to contain every unique class to be predicted with a number of replicates greater than one. For example, in the *MICROBIOMIQ* project, the Y vector contains 11 unique classes, and they are repeated 3 times within the vector. However, it is more complicated for *COMBO*, which we will discuss later in this document. Another consideration is that every row of the blocks and the response vector needs to match like in this example.
+
+| Samples   | Block 1 (X1)  | Block 2 (X2)  | Response (Y) |
+|-----------|---------------|---------------|--------------|
+| Class_A_1 | 5.2\|3.1\|3.1 | 5.2\|3.1\|3.1 | Class_A      |
+| Class_A_2 | 4.8\|2.9\|3.1 | 4.8\|2.9\|3.1 | Class_A      |
+| Class_A_3 | 6.1\|3.5\|3.1 | 6.1\|3.5\|3.1 | Class_A      |
+| Class_B_1 | 5.5\|3.0\|3.1 | 5.5\|3.0\|3.1 | Class_B      |
+| Class_B_2 | 4.9\|2.8\|3.1 | 4.9\|2.8\|3.1 | Class_B      |
+| Class_B_3 | 4.3\|2.9\|3.1 | 4.3\|2.9\|3.1 | Class_B      |
+
+## Variable selection
+
+The function *var.selection()* allows you to select variable using 8 different methods :
+
+| Methods | Approach Type | Approach Type | Argument |
+|-------------------|------------------|------------------|------------------|
+|  | Supervised | Unsupervised |  |
+| Variable Dispersion |  | CV | cv.threshold |
+|  |  | IQR | IQR.threshold |
+|  |  | Freqcut | freqCut |
+|  |  | Uniquecut | uniqueCut |
+| Variable Distribution | CH Index |  | ch.threshold |
+|  | Kruskal-Wallis |  | kruskal |
+|  |  | Kurtosis Index | kurt.threshold |
+| Variable Covariance |  | RDA | RDA |
+| VIP According to a Simple Block Model | VIP |  | vip.threshold |
+
+### Selection by Dispersion
+
+#### Coefficient of Variation (CV) and Interquartile Range (IQR)
+
+The variance of a variable can serve as a criterion for evaluating the quality of a variable in a multi-block analysis. Several metrics can be used for this purpose, such as the coefficient of variation (CV), which measures the relative dispersion of a variable, and the interquartile range (IQR), which is a measure of dispersion obtained by calculating the difference between the third and first quartiles, to select variables.
+
+#### FreqCut and UniqueCut (Near Zero Variance)
+
+Another method involves selecting variables that have few or no unique values. Such variables exhibit variance close to zero and can be identified by calculating, on one hand, the ratio between the most frequent value and the second most frequent value (freqCut), and on the other hand, determining the percentage of distinct values relative to the total number of samples (MaxKuhn et al, 2010).
+
+### Selection Based on Variable Distribution
+
+#### Kurtosis Index
+
+Part of the pipeline established relies on a discriminant analysis aimed at finding a linear combination of explanatory variables that best separates the different classes. This separation is more effective if the variables exhibit a multimodal distribution. This is why the kurtosis index is useful, as it describes the shape of a variable's distribution. The selection consists of identifying the variables whose distribution deviates the most from a normal distribution. Thus, an index greater than 3 indicates that the distribution is leptokurtic, meaning it is sharper with heavier tails, indicating a prevalence of extreme values compared to a normal distribution (Balanda et al, 1988).
+
+#### Calinski-Harabasz Index
+
+Another approach involves selecting variables whose distribution maximizes inter-class variance while minimizing intra-class variance, as indicated by the CH index (Wang et al, 2019). In other words, this method identifies variables whose distribution promotes a clear separation between classes, thereby enhancing the distinction between groups. The use of the CH index allows for determining which variables contribute most to the data structure.
+
+### Selection by Variable Covariance
+
+#### Redundancy Analysis (RDA)
+
+RDA is a direct extension of multiple regression, as it models the effect of an explanatory matrix X on a response matrix Y. The difference lies in the fact that we can model the effect of an explanatory matrix on a response matrix, rather than on a single response variable. By analyzing the regression coefficients and their significance, it is possible to determine which variables have a significant impact (Wollenberg et al, 1977).
+
+### Selection by Variable Importance in Relation to the Model: Variable Importance in Projection (VIP)
+
+VIP is based on regression coefficients from models such as Partial Least Squares (PLS) regression. Each variable receives a VIP score that indicates its relative importance to the model: a score greater than 1 signals a significant contribution to the model's performance, while a score less than 1 suggests a negligible impact. According to Mishra et al. (2021), it is possible to select variables by using the VIPs from a simple block model where the blocks have been concatenated beforehand. The VIPs quantify the contribution of each explanatory variable to the prediction of outcomes.
+
+## Scaling
+
+The scaling functions *intra.scale()* and *inter.scale()* work as follow :
+
+| Method | Category | Function | Process |
+|------------------|------------------|------------------|-------------------|
+| 1 | Intrablock | classic.scale | Mean normalization |
+| 2 |  | log.pareto | Log transformation, Pareto normalization |
+| 3 |  | med.cub.pareto | Median normalization, cube root transformation, Pareto standardization |
+| 4 |  | clr | Proportional transformation by centered logarithm using geometric mean |
+|  |  |  |  |
+| 1 | Interblock | SBS | Divides by the fourth root of the number of columns |
+| 2 |  | HBS | Divides by the square root of the number of columns |
+| 3 |  | SHBS | Divides by the number of columns |
+| 4 |  | SBVS | Divides by the fourth root of the number of columns divided by the sum of variances |
+| 5 |  | HBVS | Divides by the square root of the sum of variances |
+| 6 |  | SHBVS | Divides by the sum of standard deviations |
+
+In multi-block analysis, several levels of preprocessing are necessary due to the diversity of datasets (Campos et al, 2020). Level I aims to improve the quality of data directly obtained from the measuring instrument; it is generic to the implementation of any type of analysis. In the case of this work, this Level I preprocessing has already been performed (see Appendix). Level II seeks to balance the contribution of each variable within each block and encompasses all "classical" methods of normalization, transformation, and *scaling* used in statistics. Finally, Level III, unlike the previous two, is specific to multi-block analyses and does not focus on a single block but aims to balance the effect of each block relative to the others.
+
+This inter-block *scaling* is a crucial step in the preprocessing of multi-block data, aiming to harmonize the different data sources to eliminate biases related to differences in scale and size. Indeed, data blocks can vary significantly in terms of the number of variables and measurement units, which can distort analysis results if these differences are not properly accounted for. Normalization methods, whether based on the mean or median, help eliminate these biases, thereby facilitating comparisons between samples. For example, logarithmic transformation helps stabilize variance and normalize distributions, which is particularly useful when data exhibit extreme variations (VanDenBerg et al ,2006).
+
+Inter-block *scaling* approaches, such as *soft-scaling* (SBS) and *hard-block scaling* (HBS), are designed to balance the importance of different blocks by considering their size and variability. These methods ensure that smaller blocks are not overshadowed by larger blocks, which could introduce bias into the results. Furthermore, *block rank scaling* methods, which rely on principal component analysis (PCA) to determine the underlying dimensionality of each block, allow for the adjustment of block importance based on the uncorrelated variation they contribute to the analysis (Campos et al, 2020).
+
+# MICROBIOMIQ dataset
+
+This dataset is composed of 3 blocks : \* ENV : enveronmental parameters (pH, salinity, tempetur, ...) \* OTU : metabarcoding signals \* Metabo : MS spectrometry signales on both positiv and negativ metabolites
+
+The Y response vector response to the sampling date of each individuals (ex: Apr22, May22, Apr23, ...)
+
+## Load MICROBIOMIQ data
+
+```{r, echo=FALSE, warning=FALSE}
+library(dplyr)
+library(stringr)
+# Load raw data
+X <- list(
+  ENV = read.csv("../data/examples/MICROBIOMIQ/Env.csv"),
+  OTU = read.csv("../data/examples/MICROBIOMIQ/OTU.csv"),
+  Metabo = read.csv("../data/examples/MICROBIOMIQ/Metabo.csv")
+)
+Y1 <- X$ENV$Samples %>% str_split_i("_", 1)
+
+# Show blocks dimensions 
+sapply(X, dim) %>% data.frame
+```
+
+## Variable Selection
+
+We will apply a selection only on *OTU* and *Metabo* from the X list. In our example, we chose to select the variables that are greater than 75% of the others in terms of *IQR* and *CV*.
+
+```{r}
+reduced <- list()
+reduced <- var.selection(X[c("OTU", "Metabo")], as.vector(Y1),
+                         cv.threshold = 0.75,
+                         IQR.threshold = 0.75,
+                         freqCut = NULL,
+                         uniqueCut = NULL,
+                         kruskal = FALSE,
+                         ch.threshold = NULL,
+                         kurt.threshold = NULL,
+                         vip.threshold = NULL,
+                         RDA = FALSE,
+                         core.workers = NULL
+)
+X.r <- shrink.block(X[c("OTU", "Metabo")], reduced, plot = TRUE)
+X.r$ENV <- X$ENV
+```
+
+## Scaling
+
+We chose to apply two different scalings on *X.r*: a standard scaling for environmental parameters and a *Centered Log Ratio* (*CLR*) on *OTU* and *Metabo* since they are omic data.
+
+```{r, warning=FALSE, echo=FALSE}
+X.s <- list()
+# intrablock scaling 
+X.s$ENV <- intra.scale(X.r$ENV, Y1, method = 1, core.workers = NULL)
+X.s[c("OTU", "Metabo")] <- intra.scale(X.r[c("OTU", "Metabo")], Y, method = 4, core.workers = NULL)
+# interblock scaling (not recommanded)
+X.s <- inter.scale(X.s, method = 1, core.workers = NULL)
+
+```
+
+### Check is the scaling worked
+
+The function *plot.dst.plt()* help us visualize the effect of scaling on eachd individual block. We can consider the scaling is working when the mean and median of every column are moire or less aligned, meanning that they follow the same distribution.
+
+```{r}
+plot.dst.plt(X$Metabo %>% dplyr::select(-Samples), Y)
+plot.dst.plt(X.s$Metabo, Y)
+```
+
+## Model training
+
+Finally, all blocks are pretreated. We will now train a *PLS-DA* model using the *diablo.model()* function. The *core.workers = 2* argument means that we can parallelize the work between 2 cores. To see the number of cores available on your computer, use the command *parallel::detectCores()*. Please note that depending on your task and your computer, the speedup increase may be low even with more than 2 cores mobilized. Additionally, depending on the size of your dataset, you may easily run out of memory.
+
+```{r, warning=FALSE}
+model.1 <- diablo.model(X.s, Y1, tune = 'plsda', core.workers = 2, nzv = T, max.comp = 4)
+model.1$Parameters
+```
+
+## Visualizing results
+
+*mixOmics::plotIndiv()* allows you to plot every individuals on *n* factor space (*n* = number of blocks) *mixOmics::circosPlot()* show the correlation of every variables on circular plot. *mixOmics::cim()* make a two by two *hlc* clustering
+
+```{r, warning=FALSE}
+mixOmics::plotIndiv(model.1$model)
+mixOmics::circosPlot(model.1$model, cutoff = 0.7)
+mixOmics::cim(model.1$model, blocks = c(1, 2))
+```
+
+Further more you can explore correlation among your variables using a network with the following commands.
+
+```{r, warning=FALSE}
+# Use a mixOmics function to create a standard network
+net.mo <- mixOmics::network(model.1$model, blocks = c(1, 2, 3), cutoff = 0.7, plot.graph = F, cex.node.name = 0.1, show.color.key = F, layout.fun = layout_randomly)
+# Definning a color palette 
+palette = c("ENV" = "steelblue", "OTU" = "green", "Metabo" = "tomato")
+# Building the final network
+net <- create.network(net.mo, palette, size.min = 1)
+net$plot
+# Applying a clustering algorithm
+net.cl <- create.network(net.mo, palette, size.min = 1, cluster = T)
+net.cl$global.net
+```
+
+Additionnaly you can use *{plotly}* to explore the graph if there is just too much nodes like here.
+
+```{r, warning=FALSE}
+library(plotly)
+ggplotly(net$plot)
+```
+
+# Testing multiple parameters
+
+The following commands allow you to test mulitple combination of two selection methods and scaling (in parallel if specified). In this example we will test 0.1, 0.5 and 0.9 as threshold values for CV and IQR selection.
+
+```{r, warning=FALSE}
+library(ggplot2)
+library(reshape2)
+
+range.x <- seq(0.1, 0.9, 0.2)
+range.y <- seq(0.1, 0.9, 0.2)
+
+res.bench <- bench(X = X, Y1, 
+                 selection = c("cv.threshold", "IQR.threshold"),
+                 range.x = range.x,
+                 range.y = range.y, 
+                 ncore = 4)
+
+number_var_df <- melt(res.bench[[1]], varnames = c("CV", "IQR"), value.name = "Variable Number")
+error_rate_df <- melt(res.bench[[2]], varnames = c("CV", "IQR"), value.name = "Error Rate")
+
+ggplot(number_var_df, aes(x = CV, y = IQR, fill = `Variable Number`)) +
+  geom_tile() +
+  geom_text(aes(label = `Variable Number`), color = "white") +  
+  scale_fill_gradient(low = "blue", high = "red") +  
+  scale_x_continuous(breaks = range.x, labels = paste('CV: ', range.x)) + 
+  scale_y_continuous(breaks = range.y, labels = paste('IQR: ', range.y)) +  
+  labs(title = "Heatmap of Variable Number", x = "CV", y = "IQR") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(error_rate_df, aes(x = CV, y = IQR, fill = `Error Rate`)) +
+  geom_tile() +
+  geom_text(aes(label = round(`Error Rate`, 2)), color = "white") +  
+  scale_fill_gradient(low = "blue", high = "red") +  
+  scale_x_continuous(breaks = range.x, labels = paste('CV: ', range.x)) + 
+  scale_y_continuous(breaks = range.y, labels = paste('IQR: ', range.y)) +  
+  labs(title = "Heatmap of Error Rate", x = "CV", y = "IQR") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+In this examples cv.threshold = 0.3 and IQR.threshold = 0.5 gave use the lowest error rate.
+
+# COMBO Dataset
+
+The *COMBO* dataset is particularly difficult to manage, as a rule of thumb, there is no standard way for heterogeneous data integration. Therefore, this pipeline cannot be considered a general guideline.
+
+For this dataset, we need to reshape the blocks to ensure an equal number of rows. Additionally, we need to address zeros and missing values.
+
+## Load and reshape an COMBO data
+
+```{r, echo=FALSE, warning=FALSE}
+library(dplyr)
+library(stringr)
+
+# Load raw data
+X <- list(
+  EAG = read.csv("../data/examples/COMBO/EAG.csv"),
+  EABX = read.csv("../data/examples/COMBO/EABX.csv") %>% dplyr::select(-c(station, date)),
+  PAM = read.csv("../data/examples/COMBO/PAM.csv"),
+  Metabo = left_join(read.csv("../data/examples/COMBO/POS.csv"), read.csv("../data/examples/COMBO/NEG.csv"), by = "Samples")
+)
+
+# Reshaping data 
+X.n <- lapply(X, function(df){
+  df %>%
+    # Replace all 0 and NA with the min/5 value (this step is optional and depends on your own protocol)
+    mutate(across(everything(), ~ ifelse(. == 0, NA, .))) %>%
+    mutate(across(everything(), ~ ifelse(is.na(.), min(., na.rm = TRUE)/5, .))) %>%
+    # Average the replicates and reduce all data frames to the same number of rows.
+    # This step will have significant effects on the final model, but we will show you a way to address this issue.
+    mutate(Samples = str_split_i(Samples, "_REP", 1)) %>%
+    group_by(Samples) %>%
+    summarise(
+      across(everything(), median, na.rm = TRUE)
+    ) %>%
+    filter(Samples %in% c(X$EAG$Samples %>% str_split_i("_REP", 1))) %>%
+    filter(Samples %in% c(X$Metabo$Samples %>% str_split_i("_REP", 1))) %>%
+    data.frame()
+})
+
+# Show blocks dimensions 
+sapply(X.n, dim) %>% data.frame
+```
+
+So, our dataset presents enormous variability. But let's see how we can handle it. We will apply a selection only on *EAG* and *Metabo* from the *X.n* list. In this example, we chose to select the variables that are greater than 75% of the others in terms of IQR and *freqCut*.
+
+```{r, warning=FALSE}
+Y <- X.n$EAG$Samples %>% str_split_i("_", 2)
+reduced <- list()
+reduced <- var.selection(X.n[c('EAG', 'Metabo')], as.vector(Y),
+                         cv.threshold = NULL,
+                         IQR.threshold = 0.75,
+                         freqCut = 0.75,
+                         uniqueCut = NULL,
+                         kruskal = F,
+                         ch.threshold = NULL,
+                         kurt.threshold = NULL,
+                         vip.threshold = NULL,
+                         RDA = F,
+                         core.workers = NULL
+)
+X.r <- shrink.block(X.n[c('EAG', 'Metabo')], reduced, plot = T)
+# Place the remaining block on the X.r list
+X.r$EABX <- X.n$EABX
+X.r$PAM <- X.n$PAM
+```
+
+```{r, warning=FALSE, echo=FALSE}
+
+X.s <- list()
+# intrablock scaling 
+X.s$EAG <- intra.scale(X.r$EAG, Y, method = 1, core.workers = NULL)
+X.s$PAM <- intra.scale(X.r$PAM, Y, method = 3, core.workers = NULL)
+X.s$EABX <- intra.scale(X.r$EABX, Y, method = 4, core.workers = NULL)
+X.s$Metabo <- intra.scale(X.r$Metabo, Y, method = 4, core.workers = NULL)
+
+# interblock scaling (not recommanded)
+X.s <- inter.scale(X.s, method = 1, core.workers = NULL)
+
+```
+
+## Check is the scaling worked
+
+```{r}
+plot.dst.plt(X.n$Metabo %>% dplyr::select(-Samples), Y)
+plot.dst.plt(X.s$Metabo, Y)
+
+```
+
+```{r, warning=FALSE}
+library(factoextra)
+library(ggplot2)
+## Physico-chem clustering
+map2 <- umap.project(X.s$EAG) %>%
+  rownames_to_column(var = 'Samples') %>%
+  mutate(Sites = str_split_i(Samples, "_", 2),
+         Month = str_split_i(Samples, "_", 3)) %>%
+  column_to_rownames(var = "Samples")
+
+dist_mat <- dist(map2[, c('UMAP1', 'UMAP2')], method = 'euclidean')
+fviz_nbclust(data.frame(as.matrix(dist_mat)), FUNcluster = hcut, method ='silhouette')
+
+hclust_avg <- hclust(dist_mat, method = 'complete') # search for the best number of cluster 
+clusters <- cutree(hclust_avg, k = 7)
+map2 <- data.frame(map2, Clusters = clusters[match(names(clusters), row.names(X.s$EAG))] %>% as.factor())
+
+ggplot(map2, aes(x = UMAP1, y = UMAP2, col = Clusters)) +
+  geom_point() + theme_light()
+
+Y1 <- clusters[match(names(clusters), row.names(X.s$EAG))]
+
+```
+
+# Model training
+
+```{r, warning=FALSE}
+model.2 <- diablo.model(X.s, Y1, tune = 'plsda', core.workers = 2, nzv = T, max.comp = 4)
+model.2$Parameters
+```
+
+So our model is now running with an error rate of 53%, which is quite bad. Let investigate.
+
+```{r}
+mixOmics::plotIndiv(model.2$model)
+```
+
+We can see here that there are some outliers (S_5029000_Aug_24, S_5104000_Jul_24, S_5084000_Jul_24, and S_5088400_May_24). Furthermore, we can observe a seasonal segregation among metabolites (separation between October and the rest of the months). As a quick reminder, in this project, we aim to study spatial heterogeneity, so we need to reduce this effect.
+
+```{r, echo=FALSE}
+# Remove outlayers
+outlayers <- "S_5029000_Aug_24|S_5104000_Jul_24|S_5084000_Jul_24|S_5088400_May_24"
+X.n <- lapply(X.n, function(df){
+  df[-grep(outlayers, df$Samples), ]
+})
+
+row.names(X.n[[1]]) <- NULL
+row.names(X.n[[2]]) <- NULL
+row.names(X.n[[3]]) <- NULL
+row.names(X.n[[4]]) <- NULL
+
+sapply(X.n, dim) %>% data.frame
+```
+
+To reduce the effect of season, we propose two methods. The first one utilizes the built-in function of the Block package using the Kruskal-Wallis test, and the second one uses an intermediary model (regular PLS-DA model). Both methods aim to select the variables associated with seasonality in the metabolites dataset.
+
+# Reducing effect using kruskall-wallis test
+
+```{r, warning=FALSE}
+# Creat a new vector of only two classes (Cold --> October and Hot --> May, Jun, July, August)
+tmp.Y <- X.n$Metabo$Samples %>% str_split_i("_", 3)
+tmp.Y <- ifelse(tmp.Y == "Oct", "Cold", "Hot")
+
+reduced <- list()
+reduced <- var.selection(X.n[c('Metabo')], as.vector(tmp.Y),
+                         cv.threshold = NULL,
+                         IQR.threshold = NULL,
+                         freqCut = NULL,
+                         uniqueCut = NULL,
+                         kruskal = T,
+                         ch.threshold = NULL,
+                         kurt.threshold = NULL,
+                         vip.threshold = NULL,
+                         core.workers = NULL
+)
+X.r <- shrink.block(X.n[c('Metabo')], reduced, plot = F) # X.r contains varables associates with Y according to the kruskall-wallis test
+
+# Removing the previously selected variables 
+names <- colnames(X.r[['Metabo']])
+
+X.tmp <- list()
+X.tmp[['Metabo']] <- X.n[['Metabo']] %>% dplyr::select(-names)
+
+X.tmp$EAG <- X.n$EAG
+X.tmp$EABX <- X.n$EABX
+X.tmp$PAM <- X.n$PAM
+
+Y <- X.n$EAG$Samples %>% str_split_i("_", 2)
+reduced <- list()
+reduced <- var.selection(X.tmp[c('EAG', 'Metabo')], as.vector(Y),
+                         cv.threshold = NULL,
+                         IQR.threshold = 0.75,
+                         freqCut = 0.75,
+                         uniqueCut = NULL,
+                         kruskal = F,
+                         ch.threshold = NULL,
+                         kurt.threshold = NULL,
+                         vip.threshold = NULL,
+                         core.workers = NULL
+)
+X.r <- shrink.block(X.tmp[c('EAG', 'Metabo')], reduced, plot = F)
+X.r$EABX <- X.n$EABX
+X.r$PAM <- X.n$PAM
+X.r$Metabo$Samples <- X.n$Metabo$Samples # Replacing the 'Samples' column
+
+
+X.s <- list()
+X.s$EAG <- intra.scale(X.r$EAG, Y, method = 1, core.workers = 1)
+X.s$PAM <- intra.scale(X.r$PAM, Y, method = 3, core.workers = 1)
+X.s$EABX <- intra.scale(X.r$EABX, Y, method = 4, core.workers = 1)
+X.s$Metabo <- intra.scale(X.r$Metabo, Y, method = 4, core.workers = 1)
+
+## Physico-chem clustering
+map2 <- umap.project(X.s$EAG) %>%
+  rownames_to_column(var = 'Samples') %>%
+  mutate(Sites = str_split_i(Samples, "_", 2),
+         Month = str_split_i(Samples, "_", 3)) %>%
+  column_to_rownames(var = "Samples")
+
+dist_mat <- dist(map2[, c('UMAP1', 'UMAP2')], method = 'euclidean')
+fviz_nbclust(data.frame(as.matrix(dist_mat)), FUNcluster = hcut, method ='silhouette')  # search for the best number of cluster 
+
+hclust_avg <- hclust(dist_mat, method = 'complete')
+clusters <- cutree(hclust_avg, k = 6)
+map2 <- data.frame(map2, Clusters = clusters[match(names(clusters), row.names(X.s$EAG))] %>% as.factor())
+
+ggplot(map2, aes(x = UMAP1, y = UMAP2, col = Clusters)) +
+  geom_point() + theme_light()
+
+Y1 <- clusters[match(names(clusters), row.names(X.s$EAG))]
+
+
+model.2 <- diablo.model(X.s, Y1, tune = 'plsda', core.workers = 4, nzv = T, max.comp = 4)
+model.2$Parameters
+```
+
+We've manage to get 4% less of error rate and as you can see below, there is no more seasonal separation
+
+```{r, warning=FALSE}
+mixOmics::plotIndiv(model.2$model)
+```
+
+# Reducing effect using plsda
+
+```{r, warning=FALSE}
+X.s <- list()
+X.s$EAG <- intra.scale(X.n$EAG, Y, method = 1, core.workers = 1)
+X.s$PAM <- intra.scale(X.n$PAM, Y, method = 3, core.workers = 1)
+X.s$EABX <- intra.scale(X.n$EABX, Y, method = 4, core.workers = 1)
+X.s$Metabo <- intra.scale(X.n$Metabo, Y, method = 4, core.workers = 1)
+
+## Clustering #----
+map1 <- umap(X.s$EAG %>% dplyr::select(where(~ all(!is.na(.)))))$layout %>%
+  as.data.frame()%>%
+  rename(UMAP1="V1",
+         UMAP2="V2") %>% 
+  mutate(Samples = rownames(.),
+         Sites = str_split_i(Samples, "_", 2),
+         Month = str_split_i(Samples, "_", 3),
+         Season = case_when(
+           str_detect(Samples, "Jun|Jul|Aug") ~ paste("Summer"),
+           str_detect(Samples, "Sep|Oct|Nov") ~ paste("Autumn"),
+           str_detect(Samples, "Dec|Jan|Feb") ~ paste("Winter"),
+           str_detect(Samples, "Mar|Apr|May") ~ paste("Spring"),
+           TRUE ~ Samples))
+
+dist_mat <- dist(map1[, c('UMAP1', 'UMAP2')], method = 'euclidean')
+fviz_nbclust(data.frame(as.matrix(dist_mat)), FUNcluster = hcut, method ='silhouette')# search for the best number of cluster 
+
+hclust_avg <- hclust(dist_mat, method = 'complete')
+clusters <- cutree(hclust_avg, k = 4) 
+
+map1 <- data.frame(map1, Clusters = clusters[match(names(clusters), row.names(X.s$EAG))] %>% as.factor())
+
+ggplot(map1, aes(x = UMAP1, y = UMAP2, col = Clusters)) +
+  geom_point() + theme_light()
+
+Y1 <- clusters[match(names(clusters), row.names(X.s$EAG))]
+
+# biplopt ####
+tmp.Y <- X.n$EAG$Samples %>% str_split_i("_", 3)
+tmp.Y <- ifelse(tmp.Y == "Oct", "Cold", "Hot")
+
+best.var <- lapply(X.s[c('EAG', 'Metabo')], function(df){
+  best.loadings <- plsda(df, tmp.Y, ncomp = 4)$loadings$X[, 1]
+})
+
+# Selecting the orthogonal arrows to the ones that contribute to season change
+best.var.EAG <- best.var$EAG[best.var$EAG < quantile(best.var$EAG, probs = 0.85) & best.var$EAG > quantile(best.var$EAG, probs = 0.15)]
+best.var.Met <- best.var$Metabo[best.var$Metabo < quantile(best.var$Metabo, probs = 0.6) & best.var$Metabo > quantile(best.var$Metabo, probs = 0.5)]
+
+best.var.EAG <- paste(names(best.var.EAG), collapse = "|")
+best.var.Met <- paste(names(best.var.Met), collapse = "|")
+
+tmp.X <- X.s
+tmp.X$EAG <- X.s$EAG[, grep(best.var.EAG, colnames(X.s$EAG))]
+tmp.X$Metabo <- X.s$Metabo[, grep(best.var.Met, colnames(X.s$Metabo))]
+
+model.3 <- diablo.model(tmp.X, Y1, tune = 'plsda', core.workers = 4, nzv = T, max.comp = 4)
+model.3$Parameters
+
+```
+
+So get a reduction of error rate by 15%
+
+```{r, warning=FALSE}
+mixOmics::plotIndiv(model.3$model)
+```
+
+In this study, instead of using the site codes as a response vector, we used their cluster labels according to their physico-chemical signatures. On a map, the sites are grouped as follows.
+
+```{r, warning=FALSE}
+# Map #----
+library(sf)
+library(mapview)
+
+df <- read.csv("../data/examples/COMBO/COORD.csv") %>%
+  sf::st_as_sf(coords=c("X","Y"),crs=2154) 
+
+Y.tmp <- Y1
+
+names(Y.tmp) <- names(Y.tmp) %>% str_split_i("_", 2)
+
+Y.tmp <- data.frame(Cluster = Y.tmp, Station = as.numeric(names(Y.tmp)))
+
+df <- df %>% left_join(Y.tmp, by = 'Station') %>%
+  na.omit()
+palette_colors <- c("1" = "tomato", "2" = "green", "3" = "cyan", "4" = "purple")
+mapview::mapview(df, legend = FALSE, zcol = "Cluster", col.regions = palette_colors)
+```
+
+## Network
+
+```{r, warning=FALSE}
+par(mar = c(0, 0, 0, 0))
+net.mo <- mixOmics::network(model.3$model, blocks = c(1, 2, 3, 4), cutoff = 0.7, plot.graph = F, cex.node.name = 0.1, show.color.key = F, layout.fun = layout_randomly)
+
+palette = c("EAG" = "steelblue","Metabo" = "tomato", "PAM" = "green", "EABX" = "cyan")
+net <- create.network(net.mo, palette, size.min = 1)
+net$plot
+net$net
+
+net.cl <- create.network(net.mo, palette, size.min = 1, cluster = T)
+net.cl$global.net
+
+```

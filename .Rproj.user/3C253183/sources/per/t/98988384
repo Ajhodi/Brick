@@ -1,0 +1,26 @@
+{
+    "id": "98988384",
+    "path": "~/Brick_/COMBO_Stage_2025/R/bench_function.R",
+    "project_path": "R/bench_function.R",
+    "type": "r_source",
+    "hash": "90939468",
+    "contents": "",
+    "dirty": false,
+    "created": 1752651642412.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "46,18",
+        "scrollLine": "31"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1752680765,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1752680765032,
+    "read_only": false,
+    "read_only_alternatives": []
+}

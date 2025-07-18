@@ -1,0 +1,27 @@
+{
+    "id": "4B790E24",
+    "path": "~/Scripts/1_test_préli/corr_selection.R",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "1300926440",
+    "contents": "",
+    "dirty": true,
+    "created": 1752594484009.0,
+    "source_on_save": false,
+    "relative_order": 7,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "5,49",
+        "scrollLine": "0",
+        "docOutlineVisible": "1"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1741879714,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1752595247603,
+    "read_only": false,
+    "read_only_alternatives": []
+}

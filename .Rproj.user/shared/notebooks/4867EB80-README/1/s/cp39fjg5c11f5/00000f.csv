@@ -1,0 +1,227 @@
+"0","source(""var_selection.R"")"
+"2","G3;
+Attachement du package : ‘dplyr’
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:stats’:
+
+    filter, lag
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+g"
+"2","G3;Le chargement a nécessité le package : ggplot2
+g"
+"2","G3;Le chargement a nécessité le package : lattice
+g"
+"2","G3;Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+g"
+"2","G3;
+Attachement du package : ‘caret’
+
+g"
+"2","G3;L'objet suivant est masqué _par_ ‘.GlobalEnv’:
+
+    cluster
+
+g"
+"2","G3;Le chargement a nécessité le package : iterators
+g"
+"2","G3;Le chargement a nécessité le package : MASS
+g"
+"2","G3;
+Attachement du package : ‘MASS’
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:dplyr’:
+
+    select
+
+g"
+"2","G3;
+Loaded mixOmics 6.30.0
+Thank you for using mixOmics!
+Tutorials: http://mixomics.org
+Bookdown vignette: https://mixomicsteam.github.io/Bookdown
+Questions, issues: Follow the prompts at http://mixomics.org/contact-us
+Cite us:  citation('mixOmics')
+
+g"
+"2","G3;
+Attachement du package : ‘mixOmics’
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:caret’:
+
+    nearZeroVar, plsda, splsda
+
+g"
+"2","G3;*** Package RVAideMemoire v 0.9-83-7 ***
+g"
+"0","source(""shrink_block.R"")"
+"2","G3;Le chargement a nécessité le package : grid
+g"
+"2","G3;
+Attachement du package : ‘gridExtra’
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:dplyr’:
+
+    combine
+
+g"
+"0","source(""scaling_process.R"")"
+"2","G3;
+   ________  __________________
+  /_  __/  |/   /_  __/ ___/ _ \	   Infinite Mixtures of
+   / / / /|_// / / / / /__/ /_\ \     Infinite Factor Analysers
+ _/ /_/ /   / /_/ /_/ ___/ /___\ \	     and Related Models
+/____/_/   /_/_____/_/  /_/     \_\		  version 2.2.0 
+
+g"
+"2","G3;Type ‘?IMIFA’ to see a brief guide to how to use this R package.
+Type ‘citation(“IMIFA”)’ for citing the package in publications.
+Type ‘IMIFA_news()’ to see new features, changes, and bug fixes.
+
+g"
+"2","G3;Welcome to compositions, a package for compositional data analysis.
+Find an intro with ""? compositions""
+
+g"
+"2","G3;
+Attachement du package : ‘compositions’
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:caret’:
+
+    R2
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:stats’:
+
+    anova, cor, cov, dist, var
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:graphics’:
+
+    segments
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:base’:
+
+    %*%, norm, scale, scale.default
+
+g"
+"0","source(""model_maker.R"")"
+"0","source(""create_net.R"")"
+"2","G3;
+‘network’ 1.19.0 (2024-12-08), part of the Statnet Project
+* ‘news(package=""network"")’ for changes since last version
+* ‘citation(""network"")’ for citation information
+* ‘https://statnet.org’ for help, support, and other information
+
+g"
+"2","G3;
+Attachement du package : ‘network’
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:mixOmics’:
+
+    network
+
+g"
+"2","G3;Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2
+g"
+"2","G3;
+Attachement du package : ‘igraph’
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:network’:
+
+    %c%, %s%, add.edges, add.vertices, delete.edges, delete.vertices, get.edge.attribute,
+    get.edges, get.vertex.attribute, is.bipartite, is.directed, list.edge.attributes,
+    list.vertex.attributes, set.edge.attribute, set.vertex.attribute
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:tibble’:
+
+    as_data_frame
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:compositions’:
+
+    normalize
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:dplyr’:
+
+    as_data_frame, groups, union
+
+g"
+"2","G3;Les objets suivants sont masqués depuis ‘package:stats’:
+
+    decompose, spectrum
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:base’:
+
+    union
+
+g"
+"2","G3;
+Attachement du package : ‘tidyr’
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:igraph’:
+
+    crossing
+
+g"
+"0","source(""cluster_net.R"")"
+"0","source(""umap_projection.R"")"
+"0","source(""block_ckeck.R"")"
+"2","G3;
+Attachement du package : ‘reshape2’
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:tidyr’:
+
+    smiths
+
+g"
+"2","G3;========================================
+ComplexHeatmap version 2.22.0
+Bioconductor page: http://bioconductor.org/packages/ComplexHeatmap/
+Github page: https://github.com/jokergoo/ComplexHeatmap
+Documentation: http://jokergoo.github.io/ComplexHeatmap-reference
+
+If you use it in published research, please cite either one:
+- Gu, Z. Complex Heatmap Visualization. iMeta 2022.
+- Gu, Z. Complex heatmaps reveal patterns and correlations in multidimensional 
+    genomic data. Bioinformatics 2016.
+
+
+The new InteractiveComplexHeatmap package can directly export static 
+complex heatmaps into an interactive Shiny app with zero effort. Have a try!
+
+This message can be suppressed by:
+  suppressPackageStartupMessages(library(ComplexHeatmap))
+========================================
+
+g"
+"2","G3;
+Attachement du package : ‘ComplexHeatmap’
+
+g"
+"2","G3;L'objet suivant est masqué depuis ‘package:network’:
+
+    %v%
+
+g"

@@ -1,0 +1,26 @@
+{
+    "id": "968D5880",
+    "path": "~/Brick_/COMBO_Stage_2025/R/Selecting_Functions/get_cv.R",
+    "project_path": "R/Selecting_Functions/get_cv.R",
+    "type": "r_source",
+    "hash": "3856632394",
+    "contents": "",
+    "dirty": false,
+    "created": 1752594519678.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "7,3",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1752479682,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1752479682,
+    "read_only": false,
+    "read_only_alternatives": []
+}

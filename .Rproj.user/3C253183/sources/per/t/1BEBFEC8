@@ -1,0 +1,28 @@
+{
+    "id": "1BEBFEC8",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1752595341780.0,
+    "source_on_save": false,
+    "relative_order": 10,
+    "properties": {
+        "id": "66462a68d200406aa6597b5d7b80a25f",
+        "name": "reduced",
+        "title": "reduced",
+        "language": "R",
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 7309475734918805296,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1752595341780,
+    "read_only": false,
+    "read_only_alternatives": []
+}
